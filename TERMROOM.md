@@ -120,6 +120,14 @@ cannot be interleaved.
 - 30 Hz outbound cursor throttling;
 - a demo fixture enabled with `TERMROOM_DEMO=1`.
 
+`macos/Sources/Features/Collaboration/TmuxSessionCommand.swift` provides:
+
+- shell-free tmux argument construction;
+- private named tmux sockets and exact session targeting;
+- separate driver, collaborator, and viewer attachment modes;
+- `ignore-size` isolation for collaborators and tmux-enforced read-only viewers;
+- strict validation for identifiers received through session metadata.
+
 The overlay is mounted in Ghostty's existing `SurfaceWrapper` and does not intercept mouse input.
 
 ## Next implementation slices
@@ -129,7 +137,7 @@ The overlay is mounted in Ghostty's existing `SurfaceWrapper` and does not inter
 2. Add the isolated Playroom `WKWebView` bridge and native join/share sheet. A Playroom `gameId` is
    required for production usage.
 3. Add the host daemon and ordered terminal WebSocket protocol.
-4. Launch guests into separate PTYs attached to one private tmux server/socket.
+4. Connect the existing tmux command builder to separate guest PTYs.
 5. Add authoritative driver handoff, viewer invites, kick/revoke, and invite expiry.
 6. Replace normalized pointer coordinates with pane/cell-aware coordinates when clients have
    different viewport sizes or scroll positions.
