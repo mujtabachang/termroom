@@ -139,6 +139,11 @@ extension Ghostty {
                 // Show a highlight effect when this surface needs attention
                 HighlightOverlay(highlighted: surfaceView.highlighted)
 
+                // Multiplayer presence is rendered above terminal cells and below terminal
+                // health/error states. The terminal byte stream never contains this UI.
+                CollaborationOverlay(surfaceView: surfaceView)
+                    .zIndex(2)
+
                 // If our surface is not healthy, then we render an error view over it.
                 if !surfaceView.healthy {
                     Rectangle().fill(ghostty.config.backgroundColor)
