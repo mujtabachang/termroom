@@ -8,16 +8,46 @@ protocol CollaborationTransport: AnyObject {
     func sendCursor(_ cursor: CollaborationCursor?)
 }
 
-struct CollaborationCursor: Equatable {
+enum CollaborationConnectionState: Equatable {
+    case disconnected
+    case connecting
+    case connected
+    case failed(String)
+}
+
+struct CollaborationCursor: Decodable, Equatable {
     /// Coordinates normalized to the terminal surface using a top-left origin.
     let x: Double
     let y: Double
+
+    init(x: Double, y: Double) {
+        self.x = min(max(x, 0), 1)
+        self.y = min(max(y, 0), 1)
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            x: try container.decode(Double.self, forKey: .x),
+            y: try container.decode(Double.self, forKey: .y)
+        )
+    }
+
+    private enum CodingKeys: CodingKey {
+        case x
+        case y
+    }
 }
 
-enum CollaborationRole: String {
+enum CollaborationRole: String, Decodable {
     case driver
     case collaborator
     case viewer
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        self = Self(rawValue: try container.decode(String.self)) ?? .viewer
+    }
 }
 
 struct CollaborationParticipant: Identifiable, Equatable {
@@ -45,6 +75,7 @@ final class CollaborationSessionStore: ObservableObject {
     @Published private(set) var roomCode: String?
     @Published private(set) var localParticipantID: String?
     @Published private(set) var participants: [CollaborationParticipant] = []
+    @Published private(set) var connectionState: CollaborationConnectionState = .disconnected
 
     weak var transport: (any CollaborationTransport)?
 
@@ -99,6 +130,11 @@ final class CollaborationSessionStore: ObservableObject {
         self.participants = participants
     }
 
+    func setConnectionState(_ state: CollaborationConnectionState) {
+        dispatchPrecondition(condition: .onQueue(.main))
+        connectionState = state
+    }
+
     func updateParticipantCursor(id: String, cursor: CollaborationCursor?) {
         dispatchPrecondition(condition: .onQueue(.main))
         guard let index = participants.firstIndex(where: { $0.id == id }) else { return }
@@ -135,31 +171,65 @@ final class CollaborationSessionStore: ObservableObject {
 
 struct CollaborationOverlay: View {
     @ObservedObject var surfaceView: Ghostty.SurfaceView
+    let showsControls: Bool
     @ObservedObject private var session = CollaborationSessionStore.shared
+    @State private var showingSessionSheet = false
 
     var body: some View {
-        if session.isActive {
-            GeometryReader { geometry in
-                ZStack(alignment: .topTrailing) {
-                    ForEach(remoteParticipants) { participant in
-                        if let cursor = participant.cursor {
-                            RemoteCursor(participant: participant)
-                                .position(
-                                    x: cursor.x * geometry.size.width,
-                                    y: cursor.y * geometry.size.height
-                                )
+        GeometryReader { geometry in
+            ZStack(alignment: .topTrailing) {
+                if showsControls && session.isActive {
+                    ZStack {
+                        ForEach(remoteParticipants) { participant in
+                            if let cursor = participant.cursor {
+                                RemoteCursor(participant: participant)
+                                    .position(
+                                        x: cursor.x * geometry.size.width,
+                                        y: cursor.y * geometry.size.height
+                                    )
+                            }
                         }
                     }
-
-                    PresenceBadge(participants: session.participants)
-                        .padding(10)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
                 }
-                .onChange(of: surfaceView.mouseLocationInSurface) { point in
-                    session.sendLocalCursor(point, surfaceSize: geometry.size)
+
+                if showsControls {
+                    Button {
+                        showingSessionSheet = true
+                    } label: {
+                        if session.isActive {
+                            PresenceBadge(
+                                roomCode: session.roomCode,
+                                participants: session.participants
+                            )
+                        } else if session.connectionState == .connecting {
+                            ProgressView()
+                                .controlSize(.small)
+                                .padding(8)
+                                .background(.ultraThinMaterial, in: Circle())
+                        } else {
+                            Label("Share", systemImage: "person.2.fill")
+                                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 7)
+                                .background(.ultraThinMaterial, in: Capsule())
+                                .overlay(Capsule().strokeBorder(.white.opacity(0.18)))
+                                .shadow(color: .black.opacity(0.25), radius: 8, y: 3)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .padding(10)
+                    .help(session.isActive ? "Manage Termroom session" : "Share this terminal")
                 }
             }
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
+            .onChange(of: surfaceView.mouseLocationInSurface) { point in
+                guard showsControls else { return }
+                session.sendLocalCursor(point, surfaceSize: geometry.size)
+            }
+        }
+        .sheet(isPresented: $showingSessionSheet) {
+            CollaborationSessionSheet()
         }
     }
 
@@ -168,7 +238,138 @@ struct CollaborationOverlay: View {
     }
 }
 
+private struct CollaborationSessionSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject private var session = CollaborationSessionStore.shared
+    @State private var joinCode = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            if session.isActive {
+                activeSession
+            } else if session.connectionState == .connecting {
+                connectingSession
+            } else {
+                startSession
+            }
+        }
+        .padding(24)
+        .frame(width: 380)
+    }
+
+    private var connectingSession: some View {
+        Group {
+            HStack(spacing: 12) {
+                ProgressView()
+                    .controlSize(.small)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Connecting to Playroom")
+                        .font(.headline)
+                    Text("This normally takes a few seconds.")
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            HStack {
+                Spacer()
+                Button("Cancel") {
+                    PlayroomBridge.shared.stop()
+                    dismiss()
+                }
+            }
+        }
+    }
+
+    private var startSession: some View {
+        Group {
+            VStack(alignment: .leading, spacing: 5) {
+                Text("Share this terminal")
+                    .font(.title2.bold())
+                Text("Create a room or join an existing Termroom session.")
+                    .foregroundStyle(.secondary)
+            }
+
+            if case .failed(let message) = session.connectionState {
+                Text(message)
+                    .font(.callout)
+                    .foregroundStyle(.red)
+            }
+
+            Button("Create Room") {
+                PlayroomBridge.shared.start(roomCode: nil)
+                dismiss()
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .disabled(session.connectionState == .connecting)
+
+            HStack {
+                Divider()
+                Text("or join with a code")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize()
+                Divider()
+            }
+
+            TextField("Room code", text: $joinCode)
+                .textFieldStyle(.roundedBorder)
+                .onSubmit(joinRoom)
+
+            HStack {
+                Spacer()
+                Button("Cancel") { dismiss() }
+                Button("Join Room", action: joinRoom)
+                    .buttonStyle(.borderedProminent)
+                    .disabled(normalizedJoinCode.isEmpty)
+            }
+        }
+    }
+
+    private var activeSession: some View {
+        Group {
+            VStack(alignment: .leading, spacing: 5) {
+                Text("Terminal shared")
+                    .font(.title2.bold())
+                Text("\(session.participants.count) people are connected.")
+                    .foregroundStyle(.secondary)
+            }
+
+            Text(session.roomCode ?? "")
+                .font(.system(size: 28, weight: .semibold, design: .monospaced))
+                .textSelection(.enabled)
+
+            HStack {
+                Button("Copy Room Code") {
+                    let pasteboard = NSPasteboard.general
+                    pasteboard.clearContents()
+                    pasteboard.setString(session.roomCode ?? "", forType: .string)
+                }
+                .buttonStyle(.borderedProminent)
+
+                Spacer()
+
+                Button("Leave", role: .destructive) {
+                    PlayroomBridge.shared.stop()
+                    dismiss()
+                }
+            }
+        }
+    }
+
+    private var normalizedJoinCode: String {
+        joinCode.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+    }
+
+    private func joinRoom() {
+        guard !normalizedJoinCode.isEmpty else { return }
+        PlayroomBridge.shared.start(roomCode: normalizedJoinCode)
+        dismiss()
+    }
+}
+
 private struct PresenceBadge: View {
+    let roomCode: String?
     let participants: [CollaborationParticipant]
 
     var body: some View {
@@ -182,6 +383,12 @@ private struct PresenceBadge: View {
             Label("\(participants.count)", systemImage: "person.2.fill")
                 .font(.system(size: 11, weight: .semibold, design: .rounded))
                 .foregroundStyle(.primary)
+
+            if let roomCode, !roomCode.isEmpty {
+                Text(roomCode)
+                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                    .foregroundStyle(.secondary)
+            }
         }
         .padding(.horizontal, 9)
         .padding(.vertical, 6)

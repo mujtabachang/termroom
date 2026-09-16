@@ -128,14 +128,26 @@ cannot be interleaved.
 - `ignore-size` isolation for collaborators and tmux-enforced read-only viewers;
 - strict validation for identifiers received through session metadata.
 
+`macos/Sources/Features/Collaboration/PlayroomBridge.swift` provides:
+
+- an isolated, non-persistent `WKWebView` for the Playroom JavaScript client;
+- the configured Playroom project and a pinned SDK version;
+- typed snapshots from Playroom into the native session store;
+- unreliable outbound cursor state and reliable participant-role state;
+- a navigation allowlist and content security policy;
+- no access to terminal input, output, PTYs, or tmux authorization.
+
+The terminal overlay now includes a native Share button with Create Room, Join Room, Copy Room
+Code, participant count, and Leave controls. Environment variables remain available for automated
+development launches.
+
 The overlay is mounted in Ghostty's existing `SurfaceWrapper` and does not intercept mouse input.
 
 ## Next implementation slices
 
 1. Rebrand the macOS target, bundle identifier, app icon, and updater metadata from Ghostty to
    Termroom while preserving upstream attribution.
-2. Add the isolated Playroom `WKWebView` bridge and native join/share sheet. A Playroom `gameId` is
-   required for production usage.
+2. Add authenticated, expiring invite capabilities in front of Playroom room codes.
 3. Add the host daemon and ordered terminal WebSocket protocol.
 4. Connect the existing tmux command builder to separate guest PTYs.
 5. Add authoritative driver handoff, viewer invites, kick/revoke, and invite expiry.
@@ -148,8 +160,25 @@ The overlay is mounted in Ghostty's existing `SurfaceWrapper` and does not inter
 On a macOS Ghostty development machine, build using Ghostty's documented command:
 
 ```sh
-TERMROOM_DEMO=1 macos/build.nu --configuration Debug --action build
+macos/build.nu --configuration Debug --action build
 ```
 
-Launching that build with `TERMROOM_DEMO=1` displays the native collaboration fixture. A real
-Playroom session will replace the fixture through `CollaborationSessionStore`.
+Launching the executable with `TERMROOM_DEMO=1` displays the native collaboration fixture:
+
+```sh
+TERMROOM_DEMO=1 macos/build/Debug/Ghostty.app/Contents/MacOS/ghostty
+```
+
+To create a real Playroom room during development:
+
+```sh
+TERMROOM_PLAYROOM_ENABLED=1 \
+  macos/build/Debug/Ghostty.app/Contents/MacOS/ghostty
+```
+
+To join an existing room, also set its code:
+
+```sh
+TERMROOM_PLAYROOM_ENABLED=1 TERMROOM_ROOM_CODE=ABCD1234 \
+  macos/build/Debug/Ghostty.app/Contents/MacOS/ghostty
+```

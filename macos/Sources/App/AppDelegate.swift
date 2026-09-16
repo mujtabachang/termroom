@@ -170,6 +170,10 @@ class AppDelegate: NSObject,
 
     private let appIconUpdater = AppIconUpdater()
 
+    /// Retain the process-wide collaboration bridge. Environment variables can
+    /// auto-start it for automated testing and local development.
+    private let playroomBridge = PlayroomBridge.shared
+
     @MainActor private lazy var menuShortcutManager = Ghostty.MenuShortcutManager()
 
     override init() {
@@ -228,6 +232,12 @@ class AppDelegate: NSObject,
 
         // Initial config loading
         ghosttyConfigDidChange(config: ghostty.config)
+
+        if ProcessInfo.processInfo.environment["TERMROOM_PLAYROOM_ENABLED"] == "1" {
+            playroomBridge.start(
+                roomCode: ProcessInfo.processInfo.environment["TERMROOM_ROOM_CODE"]
+            )
+        }
 
         // Start our update checker.
         updateController.startUpdater()

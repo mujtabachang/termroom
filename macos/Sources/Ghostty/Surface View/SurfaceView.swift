@@ -141,7 +141,10 @@ extension Ghostty {
 
                 // Multiplayer presence is rendered above terminal cells and below terminal
                 // health/error states. The terminal byte stream never contains this UI.
-                CollaborationOverlay(surfaceView: surfaceView)
+                CollaborationOverlay(
+                    surfaceView: surfaceView,
+                    showsControls: isFocusedSurface
+                )
                     .zIndex(2)
 
                 // If our surface is not healthy, then we render an error view over it.
