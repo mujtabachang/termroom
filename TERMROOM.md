@@ -145,6 +145,16 @@ framing foundation for the separate terminal plane:
 - strict session identifier validation and constant-time signature comparison;
 - no reliance on Playroom host election or participant state for authorization.
 
+`macos/Sources/Features/Collaboration/TerminalHostSession.swift` and
+`POSIXTmuxParticipantProcess.swift` provide the first host-daemon core:
+
+- single-use invite consumption plus invite and whole-session revocation;
+- authoritative participant roles and monotonically increasing input sequences;
+- driver-only input and resize enforcement, independent of presence state;
+- one real pseudo-terminal and separate tmux client process per participant;
+- bounded output framing and clean participant/session teardown;
+- injectable process and frame interfaces for a future relay transport.
+
 The terminal overlay now includes a native Share button with Create Room, Join Room, Copy Room
 Code, participant count, and Leave controls. Environment variables remain available for automated
 development launches.
@@ -155,10 +165,10 @@ The overlay is mounted in Ghostty's existing `SurfaceWrapper` and does not inter
 
 1. Rebrand the macOS target, bundle identifier, app icon, and updater metadata from Ghostty to
    Termroom while preserving upstream attribution.
-2. Add replay protection and host-side revocation for authenticated invite capabilities.
-3. Add the host daemon around the ordered terminal protocol.
-4. Connect the existing tmux command builder to separate guest PTYs.
-5. Add authoritative driver handoff, viewer invites, kick/revoke, and invite expiry.
+2. Persist revocation state for long-lived daemon processes.
+3. Add the encrypted relay connection around the host protocol interfaces.
+4. Start and supervise the canonical tmux session from the app.
+5. Add authoritative driver handoff and visible control requests.
 6. Replace normalized pointer coordinates with pane/cell-aware coordinates when clients have
    different viewport sizes or scroll positions.
 7. Add a GTK overlay implementation after the macOS flow is stable.
