@@ -73,7 +73,10 @@ protocol TerminalParticipantProcess: AnyObject {
 @MainActor
 final class TerminalHostSession {
     typealias FrameSink = (TerminalFrame) -> Void
-    typealias ProcessFactory = (_ executableURL: URL, _ arguments: [String]) throws -> any TerminalParticipantProcess
+    typealias ProcessFactory = @MainActor (
+        _ executableURL: URL,
+        _ arguments: [String]
+    ) throws -> any TerminalParticipantProcess
 
     private struct Participant {
         let role: CollaborationRole
