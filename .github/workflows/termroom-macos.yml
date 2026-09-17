@@ -1,0 +1,47 @@
+name: Termroom macOS
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - termroom-bootstrap
+    paths:
+      - ".github/workflows/termroom-macos.yml"
+      - "macos/**"
+      - "src/**"
+      - "build.zig"
+      - "build.zig.zon"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: termroom-macos-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install Zig
+        uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2.2.1
+        with:
+          version: 0.16.0
+
+      - name: Build GhosttyKit
+        run: zig build -Demit-macos-app=false
+
+      - name: Test macOS app
+        run: |
+          xcodebuild \
+            -project macos/Ghostty.xcodeproj \
+            -scheme Ghostty \
+            -configuration Debug \
+            -derivedDataPath macos/build/DerivedData \
+            -skip-testing GhosttyUITests \
+            CODE_SIGNING_ALLOWED=NO \
+            test

@@ -137,6 +137,14 @@ cannot be interleaved.
 - a navigation allowlist and content security policy;
 - no access to terminal input, output, PTYs, or tmux authorization.
 
+`macos/Sources/Features/Collaboration/TerminalTransportProtocol.swift` provides the security and
+framing foundation for the separate terminal plane:
+
+- versioned binary frames with explicit message types, sequence numbers, and payload limits;
+- HMAC-SHA256 signed invite capabilities scoped to a session, role, and expiration time;
+- strict session identifier validation and constant-time signature comparison;
+- no reliance on Playroom host election or participant state for authorization.
+
 The terminal overlay now includes a native Share button with Create Room, Join Room, Copy Room
 Code, participant count, and Leave controls. Environment variables remain available for automated
 development launches.
@@ -147,13 +155,16 @@ The overlay is mounted in Ghostty's existing `SurfaceWrapper` and does not inter
 
 1. Rebrand the macOS target, bundle identifier, app icon, and updater metadata from Ghostty to
    Termroom while preserving upstream attribution.
-2. Add authenticated, expiring invite capabilities in front of Playroom room codes.
-3. Add the host daemon and ordered terminal WebSocket protocol.
+2. Add replay protection and host-side revocation for authenticated invite capabilities.
+3. Add the host daemon around the ordered terminal protocol.
 4. Connect the existing tmux command builder to separate guest PTYs.
 5. Add authoritative driver handoff, viewer invites, kick/revoke, and invite expiry.
 6. Replace normalized pointer coordinates with pane/cell-aware coordinates when clients have
    different viewport sizes or scroll positions.
 7. Add a GTK overlay implementation after the macOS flow is stable.
+
+The fork also includes `.github/workflows/termroom-macos.yml`, which builds GhosttyKit and runs the
+macOS unit tests on pushes to the implementation branch or by manual dispatch.
 
 ## Local UI spike
 

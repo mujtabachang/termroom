@@ -39,7 +39,7 @@ struct CollaborationCursor: Decodable, Equatable {
     }
 }
 
-enum CollaborationRole: String, Decodable {
+enum CollaborationRole: String, Codable {
     case driver
     case collaborator
     case viewer
@@ -47,6 +47,11 @@ enum CollaborationRole: String, Decodable {
     init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         self = Self(rawValue: try container.decode(String.self)) ?? .viewer
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(rawValue)
     }
 }
 
