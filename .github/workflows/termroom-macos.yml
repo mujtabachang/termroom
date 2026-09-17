@@ -21,7 +21,9 @@ concurrency:
 
 jobs:
   test:
-    runs-on: macos-15
+    # Ghostty currently builds with Xcode 26.6. The macOS 15 image defaults to
+    # Xcode 16.4, which rejects existing upstream Swift concurrency code.
+    runs-on: macos-26
     timeout-minutes: 60
     steps:
       - name: Checkout
