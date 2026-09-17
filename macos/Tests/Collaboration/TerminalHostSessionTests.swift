@@ -49,7 +49,8 @@ struct TerminalHostSessionTests {
                 from: "helper"
             )
         }
-        #expect(harness.processes.allSatisfy(\.inputs.isEmpty))
+        #expect(harness.processes[0].inputs.isEmpty)
+        #expect(harness.processes[1].inputs.isEmpty)
     }
 
     @Test func inviteIsSingleUseAndCanBeRevoked() throws {
@@ -106,7 +107,8 @@ struct TerminalHostSessionTests {
         }
 
         harness.host.revokeSession()
-        #expect(harness.processes.allSatisfy(\.stopped))
+        #expect(harness.processes[0].stopped)
+        #expect(harness.processes[1].stopped)
 
         let token = try harness.token(role: .viewer, nonce: "late-viewer")
         #expect(throws: TerminalHostError.sessionRevoked) {
@@ -114,6 +116,7 @@ struct TerminalHostSessionTests {
         }
     }
 
+    @MainActor
     private final class Harness {
         let key: SymmetricKey
         let now: Date
@@ -161,10 +164,12 @@ struct TerminalHostSessionTests {
         }
     }
 
+    @MainActor
     private final class ProcessRecorder {
         var processes: [FakeProcess] = []
     }
 
+    @MainActor
     private final class FakeProcess: TerminalParticipantProcess {
         let arguments: [String]
         var onOutput: ((Data) -> Void)?
