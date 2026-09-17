@@ -1,0 +1,71 @@
+name: Termroom Release
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/termroom-release.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: termroom-v0.1.0-alpha.1
+  cancel-in-progress: false
+
+env:
+  RELEASE_VERSION: v0.1.0-alpha.1
+
+jobs:
+  release:
+    runs-on: macos-26
+    timeout-minutes: 75
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install Zig
+        uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2.2.1
+        with:
+          version: 0.16.0
+
+      - name: Build GhosttyKit
+        run: zig build -Demit-macos-app=false
+
+      - name: Build unsigned developer app
+        run: |
+          xcodebuild \
+            -project macos/Ghostty.xcodeproj \
+            -scheme Ghostty \
+            -configuration Debug \
+            -derivedDataPath macos/build/ReleaseDerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Package app
+        run: |
+          ditto -c -k --sequesterRsrc --keepParent \
+            macos/build/ReleaseDerivedData/Build/Products/Debug/Ghostty.app \
+            Termroom-macOS-arm64-${RELEASE_VERSION}.zip
+          shasum -a 256 Termroom-macOS-arm64-${RELEASE_VERSION}.zip \
+            > Termroom-macOS-arm64-${RELEASE_VERSION}.zip.sha256
+
+      - name: Create prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "${RELEASE_VERSION}" >/dev/null 2>&1; then
+            gh release upload "${RELEASE_VERSION}" --clobber \
+              Termroom-macOS-arm64-${RELEASE_VERSION}.zip \
+              Termroom-macOS-arm64-${RELEASE_VERSION}.zip.sha256
+          else
+            gh release create "${RELEASE_VERSION}" \
+              --target "${GITHUB_SHA}" \
+              --title "Termroom ${RELEASE_VERSION}" \
+              --prerelease \
+              --notes "Early developer preview of Termroom's Ghostty-based multiplayer terminal. Includes Playroom presence and cursors, signed expiring invites, role-gated terminal frames, and separate PTY-backed tmux clients. The app is unsigned, not notarized, and retains upstream Ghostty branding in this prerelease. Do not grant terminal access to untrusted participants." \
+              Termroom-macOS-arm64-${RELEASE_VERSION}.zip \
+              Termroom-macOS-arm64-${RELEASE_VERSION}.zip.sha256
+          fi

@@ -1,27 +1,61 @@
-<!-- LOGO -->
-<h1>
+<h1 align="center">Termroom</h1>
+
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/fe853809-ba8b-400b-83ab-a9a0da25be8a" alt="Logo" width="128">
-  <br>Ghostty
-</h1>
-  <p align="center">
-    Fast, native, feature-rich terminal emulator pushing modern features.
-    <br />
-    A native GUI or embeddable library via <code>libghostty</code>.
-    <br />
-    <a href="#about">About</a>
-    ·
-    <a href="https://ghostty.org/download">Download</a>
-    ·
-    <a href="https://ghostty.org/docs">Documentation</a>
-    ·
-    <a href="CONTRIBUTING.md">Contributing</a>
-    ·
-    <a href="HACKING.md">Developing</a>
-  </p>
+  A multiplayer terminal for shared tmux sessions, built on Ghostty.
 </p>
 
-## About
+Termroom is an experimental macOS-first collaboration layer for terminals. People join the same
+tmux session through separate pseudo-terminals while the native app displays room presence, user
+avatars, roles, and remote cursors above Ghostty's terminal surface.
+
+> [!WARNING]
+>
+> Termroom is an early developer preview. Remote terminal input is equivalent to granting the
+> participant the permissions of the shared shell. The current release is not intended for
+> untrusted or production access, and its app bundle is unsigned and not notarized.
+
+## Current status
+
+- Playroom rooms provide ephemeral presence, participant profiles, avatars, and cursor state.
+- Terminal bytes never pass through Playroom.
+- Signed, expiring, single-use invite capabilities are enforced by the host.
+- Every participant receives a separate PTY-backed tmux client.
+- Viewers are read-only; only the active driver can send input or resize the session.
+- Invite replay, revocation, sequencing, framing, and host lifecycle behavior are covered by tests.
+- macOS 26 and Xcode 26.6 builds are verified in GitHub Actions.
+
+The encrypted relay connection and end-user invite flow are still under development. See
+[TERMROOM.md](TERMROOM.md) for the researched architecture, security invariants, and implementation
+roadmap.
+
+## Developer build
+
+Requirements include Xcode 26.6, Zig 0.16.0, and tmux. Build and test using:
+
+```sh
+zig build -Demit-macos-app=false
+macos/build.nu --configuration Debug --action build
+macos/build.nu --configuration Debug --action test
+```
+
+Set `TERMROOM_PLAYROOM_ENABLED=1` to create a Playroom room automatically during development, or use
+the native Share control in the focused terminal surface.
+
+## Releases
+
+Developer preview builds are published on the [GitHub Releases](https://github.com/mujtabachang/termroom/releases)
+page. The first prerelease retains some upstream Ghostty names and artwork while product rebranding
+is completed.
+
+## Ghostty foundation and attribution
+
+Termroom is a fork of [Ghostty](https://github.com/ghostty-org/ghostty) and preserves Ghostty's MIT
+license and copyright notices. Ghostty provides the native SwiftUI/AppKit interface, terminal core,
+Metal renderer, and cross-platform `libghostty` foundation.
+
+The upstream project description follows for attribution and development context.
+
+## About Ghostty
 
 Ghostty is a terminal emulator that differentiates itself by being
 fast, feature-rich, and native. While there are many excellent terminal
