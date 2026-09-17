@@ -12,7 +12,7 @@ avatars, roles, and remote cursors above Ghostty's terminal surface.
 >
 > Termroom is an early developer preview. Remote terminal input is equivalent to granting the
 > participant the permissions of the shared shell. The current release is not intended for
-> untrusted or production access, and its app bundle is unsigned and not notarized.
+> untrusted or production access. Its app bundle is ad-hoc signed, but not Apple-notarized.
 
 ## Current status
 
@@ -44,8 +44,17 @@ the native Share control in the focused terminal surface.
 ## Releases
 
 Developer preview builds are published on the [GitHub Releases](https://github.com/mujtabachang/termroom/releases)
-page. The first prerelease retains some upstream Ghostty names and artwork while product rebranding
-is completed.
+page. Download the newest macOS ZIP, move `Termroom.app` to Applications, then Control-click the app
+and choose **Open** on first launch. The preview is ad-hoc signed and signature-verified in CI, but
+is not yet Apple-notarized. If macOS still reports that the app is damaged, remove the downloaded
+quarantine attribute and open it again:
+
+```sh
+xattr -dr com.apple.quarantine /Applications/Termroom.app
+```
+
+Public releases will be Developer ID signed and notarized once Apple signing credentials are
+configured in the release workflow.
 
 ## Ghostty foundation and attribution
 

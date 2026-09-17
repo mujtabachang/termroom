@@ -12,11 +12,11 @@ permissions:
   contents: write
 
 concurrency:
-  group: termroom-v0.1.0-alpha.1
+  group: termroom-v0.1.0-alpha.2
   cancel-in-progress: false
 
 env:
-  RELEASE_VERSION: v0.1.0-alpha.1
+  RELEASE_VERSION: v0.1.0-alpha.2
 
 jobs:
   release:
@@ -34,20 +34,26 @@ jobs:
       - name: Build GhosttyKit
         run: zig build -Demit-macos-app=false
 
-      - name: Build unsigned developer app
+      - name: Build ad-hoc signed developer app
         run: |
           xcodebuild \
             -project macos/Ghostty.xcodeproj \
             -scheme Ghostty \
-            -configuration Debug \
+            -configuration ReleaseLocal \
             -derivedDataPath macos/build/ReleaseDerivedData \
-            CODE_SIGNING_ALLOWED=NO \
             build
+
+      - name: Verify app signature
+        run: |
+          codesign --force --deep --sign - --timestamp=none \
+            macos/build/ReleaseDerivedData/Build/Products/ReleaseLocal/Termroom.app
+          codesign --verify --deep --strict --verbose=2 \
+            macos/build/ReleaseDerivedData/Build/Products/ReleaseLocal/Termroom.app
 
       - name: Package app
         run: |
           ditto -c -k --sequesterRsrc --keepParent \
-            macos/build/ReleaseDerivedData/Build/Products/Debug/Ghostty.app \
+            macos/build/ReleaseDerivedData/Build/Products/ReleaseLocal/Termroom.app \
             Termroom-macOS-arm64-${RELEASE_VERSION}.zip
           shasum -a 256 Termroom-macOS-arm64-${RELEASE_VERSION}.zip \
             > Termroom-macOS-arm64-${RELEASE_VERSION}.zip.sha256
@@ -65,7 +71,7 @@ jobs:
               --target "${GITHUB_SHA}" \
               --title "Termroom ${RELEASE_VERSION}" \
               --prerelease \
-              --notes "Early developer preview of Termroom's Ghostty-based multiplayer terminal. Includes Playroom presence and cursors, signed expiring invites, role-gated terminal frames, and separate PTY-backed tmux clients. The app is unsigned, not notarized, and retains upstream Ghostty branding in this prerelease. Do not grant terminal access to untrusted participants." \
+              --notes "Termroom multiplayer terminal developer preview. This build adds full Termroom app branding and icon, Playroom presence and cursors, signed expiring invites, role-gated terminal frames, and separate PTY-backed tmux clients. The app is ad-hoc signed and signature-verified, but is not Apple-notarized; on first launch, Control-click Termroom and choose Open. Do not grant terminal access to untrusted participants." \
               Termroom-macOS-arm64-${RELEASE_VERSION}.zip \
               Termroom-macOS-arm64-${RELEASE_VERSION}.zip.sha256
           fi
