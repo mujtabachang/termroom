@@ -580,6 +580,7 @@
 				MARKETING_VERSION = 0.1;
 				"OTHER_LDFLAGS[arch=*]" = "-lstdc++";
 				PRODUCT_BUNDLE_IDENTIFIER = com.mujtabachang.termroom;
+				PRODUCT_MODULE_NAME = Ghostty;
 				PRODUCT_NAME = Termroom;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = "Sources/App/ghostty-bridging-header.h";
@@ -977,6 +978,7 @@
 				MARKETING_VERSION = 0.1;
 				"OTHER_LDFLAGS[arch=*]" = "-lstdc++";
 				PRODUCT_BUNDLE_IDENTIFIER = com.mujtabachang.termroom.debug;
+				PRODUCT_MODULE_NAME = Ghostty;
 				PRODUCT_NAME = Termroom;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = "Sources/App/ghostty-bridging-header.h";
@@ -1032,6 +1034,7 @@
 				MARKETING_VERSION = 0.1;
 				"OTHER_LDFLAGS[arch=*]" = "-lstdc++";
 				PRODUCT_BUNDLE_IDENTIFIER = com.mujtabachang.termroom;
+				PRODUCT_MODULE_NAME = Ghostty;
 				PRODUCT_NAME = Termroom;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = "Sources/App/ghostty-bridging-header.h";
